@@ -1,207 +1,303 @@
+const chatBox = document.getElementById('chat-box');
+const userInput = document.getElementById('user-input');
+const sendButton = document.getElementById('send-button');
+const newChatButton = document.getElementById('new-chat-button');
+const recentChatsList = document.getElementById('recent-chats-list');
 
-/* ---- particles.js config ---- */
+let conversationHistory = [];
+let currentChatId = null;
+const initialGreeting = "Hello! How can I help you today?";
+const MAX_RECENT_CHATS = 8;
+const STORAGE_KEY = 'geminiRecentChats';
+const AI_AVATAR_URL = "https://www.mobiletime.com.br/wp-content/uploads/2024/12/gemini-icon.webp";
+const scriptSizeSelect = document.getElementById('script-size');
 
-particlesJS("particles-js", {
-  "particles": {
-    "number": {
-      "value": 400,
-      "density": {
-        "enable": true,
-        "value_area": 2000
-      }
-    },
-    "color": {
-      "value": ["#10b981", "#06b6d4", "#8b5cf6", "#f59e0b", "#ef4444", "#3b82f6"]
-    },
-    "shape": {
-      "type": "circle",
-      "stroke": {
-        "width": 0,
-        "color": "#000000"
-      },
-      "polygon": {
-        "nb_sides": 6
-      }
-    },
-    "opacity": {
-      "value": 0.8,
-      "random": true,
-      "anim": {
-        "enable": true,
-        "speed": 2,
-        "opacity_min": 0.3,
-        "sync": false
-      }
-    },
-    "size": {
-      "value": 1.5,
-      "random": true,
-      "anim": {
-        "enable": true,
-        "speed": 3,
-        "size_min": 0.5,
-        "sync": false
-      }
-    },
-    "line_linked": {
-      "enable": true,
-      "distance": 80,
-      "color": "#ffffff",
-      "opacity": 0.6,
-      "width": 1
-    },
-    "move": {
-      "enable": true,
-      "speed": 2,
-      "direction": "none",
-      "random": true,
-      "straight": false,
-      "out_mode": "bounce",
-      "bounce": true,
-      "attract": {
-        "enable": true,
-        "rotateX": 600,
-        "rotateY": 600
-      }
+function addMessage(sender, message, animate = true) {
+    const messageElement = document.createElement('div');
+    messageElement.classList.add('message');
+    messageElement.classList.add(sender === 'user' ? 'user-message' : 'ai-message');
+
+    const messageContent = document.createElement('div');
+    messageContent.classList.add('message-content');
+
+    // Check if message contains code blocks
+    const hasCodeBlock = message.includes('```');
+    if (hasCodeBlock) {
+        const parts = message.split('```');
+        parts.forEach((part, index) => {
+            if (index % 2 === 0) {
+                // Regular text
+                if (part.trim()) {
+                    const p = document.createElement('p');
+                    part = part.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    part = part.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                    part = part.replace(/\n/g, '<br>');
+                    p.innerHTML = part;
+                    messageContent.appendChild(p);
+                }
+            } else {
+                // Code block
+                const pre = document.createElement('pre');
+                const code = document.createElement('code');
+                let trimmed = part.trim();
+                const firstLine = trimmed.split('\n')[0];
+                if (/^[a-zA-Z][\w#+.\-]*$/.test(firstLine)) {
+                    trimmed = trimmed.slice(firstLine.length).trimStart();
+                }
+                code.textContent = trimmed;
+                pre.appendChild(code);
+
+                // Add copy button
+                const copyButton = document.createElement('button');
+                copyButton.className = 'copy-button';
+                copyButton.textContent = 'Copy';
+                copyButton.onclick = () => {
+                    navigator.clipboard.writeText(code.textContent);
+                    copyButton.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyButton.textContent = 'Copy';
+                    }, 2000);
+                };
+                pre.appendChild(copyButton);
+                messageContent.appendChild(pre);
+            }
+        });
+    } else {
+        const p = document.createElement('p');
+        message = message.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        message = message.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        message = message.replace(/\n/g, '<br>');
+        p.innerHTML = message;
+        messageContent.appendChild(p);
     }
-  },
-  "interactivity": {
-    "detect_on": "canvas",
-    "events": {
-      "onhover": {
-        "enable": true,
-        "mode": ["grab", "bubble"]
-      },
-      "onclick": {
-        "enable": true,
-        "mode": "push"
-      },
-      "resize": true
-    },
-    "modes": {
-      "grab": {
-        "distance": 120,
-        "line_linked": {
-          "opacity": 1,
-          "color": "#10b981",
-          "width": 2
+
+    if (sender === 'ai' && !messageElement.classList.contains('thinking')) {
+        const avatarImg = document.createElement('img');
+        avatarImg.src = AI_AVATAR_URL;
+        avatarImg.alt = "AI Avatar";
+        avatarImg.classList.add('ai-avatar');
+        messageElement.appendChild(avatarImg);
+    }
+
+    messageElement.appendChild(messageContent);
+
+    if (animate) {
+        messageElement.style.animation = 'fadeInScaleUp 0.3s ease-out forwards';
+    }
+
+    chatBox.appendChild(messageElement);
+    requestAnimationFrame(() => {
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+}
+
+function getRecentChats() {
+    const storedChats = localStorage.getItem(STORAGE_KEY);
+    return storedChats ? JSON.parse(storedChats) : [];
+}
+
+function saveRecentChats(chats) {
+    const chatsToSave = chats.slice(-MAX_RECENT_CHATS);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(chatsToSave));
+}
+
+function generateChatTitle(history) {
+    const firstUserMessage = history.find(msg => msg.role === 'user');
+    if (firstUserMessage && firstUserMessage.content) {
+        return firstUserMessage.content.substring(0, 30) + (firstUserMessage.content.length > 30 ? '...' : '');
+    }
+    return "New Chat";
+}
+
+function saveCurrentConversation() {
+    if (conversationHistory.length <= 1 || conversationHistory.every(m => m.role === 'assistant')) return;
+
+    const recentChats = getRecentChats();
+    const title = generateChatTitle(conversationHistory);
+
+    if (currentChatId) {
+        const existingChatIndex = recentChats.findIndex(chat => chat.id === currentChatId);
+        if (existingChatIndex > -1) {
+            recentChats[existingChatIndex].history = [...conversationHistory];
+            recentChats[existingChatIndex].title = title;
+            recentChats[existingChatIndex].lastUpdated = Date.now();
+            const updatedChat = recentChats.splice(existingChatIndex, 1)[0];
+            recentChats.push(updatedChat);
+        } else {
+            currentChatId = Date.now();
+            recentChats.push({
+                id: currentChatId,
+                title: title,
+                history: [...conversationHistory],
+                lastUpdated: Date.now()
+            });
         }
-      },
-      "bubble": {
-        "distance": 100,
-        "size": 4,
-        "duration": 0.3,
-        "opacity": 1,
-        "speed": 3
-      },
-      "repulse": {
-        "distance": 80,
-        "duration": 0.4
-      },
-      "push": {
-        "particles_nb": 8
-      },
-      "remove": {
-        "particles_nb": 2
-      }
+    } else {
+        currentChatId = Date.now();
+        recentChats.push({
+            id: currentChatId,
+            title: title,
+            history: [...conversationHistory],
+            lastUpdated: Date.now()
+        });
     }
-  },
-  "retina_detect": true
+
+    saveRecentChats(recentChats);
+    displayRecentChats();
+}
+
+function displayRecentChats() {
+    const recentChats = getRecentChats();
+    recentChats.sort((a, b) => b.lastUpdated - a.lastUpdated);
+    recentChatsList.innerHTML = '';
+
+    recentChats.forEach(chat => {
+        const li = document.createElement('li');
+        li.textContent = chat.title || 'Chat';
+        li.title = chat.title || 'Chat';
+        li.dataset.chatId = chat.id;
+        if (chat.id === currentChatId) {
+            li.classList.add('active');
+        }
+        li.addEventListener('click', () => loadSpecificChat(chat.id));
+        recentChatsList.appendChild(li);
+    });
+
+    const activeLi = recentChatsList.querySelector('.active');
+    if (activeLi) {
+        activeLi.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+}
+
+function loadSpecificChat(chatId) {
+    if (chatId === currentChatId) return;
+
+    saveCurrentConversation();
+
+    const recentChats = getRecentChats();
+    const chatToLoad = recentChats.find(chat => chat.id === chatId);
+
+    if (chatToLoad) {
+        currentChatId = chatToLoad.id;
+        conversationHistory = [...chatToLoad.history];
+        chatBox.innerHTML = '';
+
+        conversationHistory.forEach(message => {
+            addMessage(message.role === 'user' ? 'user' : 'ai', message.content, false);
+        });
+
+        userInput.value = '';
+        userInput.style.height = 'auto';
+        userInput.focus();
+        displayRecentChats();
+    } else {
+        console.error("Chat with ID", chatId, "not found.");
+        startNewChat();
+    }
+}
+
+async function sendMessage() {
+    const messageText = userInput.value.trim();
+    if (messageText === '') return;
+
+    addMessage('user', messageText);
+    userInput.value = '';
+    userInput.style.height = 'auto';
+
+    const userMessage = {
+        role: "user",
+        content: messageText,
+    };
+    conversationHistory.push(userMessage);
+
+    const thinkingElement = document.createElement('div');
+    thinkingElement.classList.add('message', 'ai-message', 'thinking');
+    thinkingElement.innerHTML = `
+        <img src="${AI_AVATAR_URL}" alt="AI Avatar" class="ai-avatar">
+        <div class="message-content"><p class="generating">Generating code...</p></div>
+    `;
+    chatBox.appendChild(thinkingElement);
+    
+    try {
+        // Read script size preference
+        const sizePref = (scriptSizeSelect?.value || 'auto').toLowerCase();
+        const sizeDirective = sizePref === 'small'
+            ? "Keep the script short and focused with minimal boilerplate."
+            : sizePref === 'large'
+            ? "Provide a more comprehensive, larger script with helpful comments."
+            : "Choose an appropriate script length based on the user's request.";
+
+        const completion = await websim.chat.completions.create({
+            messages: [
+                {
+                    role: "system",
+                    content: `You are Gemini, a helpful AI assistant from Google.
+When generating game-help code or scripts, follow this length preference: ${sizeDirective}
+Explain your thought process briefly before showing the code.
+Wrap all code in triple backticks (\`\`\`), and do not include any language labels.
+Use *italics* and **bold** for emphasis. Keep responses clear and friendly.`,
+                },
+                ...conversationHistory.slice(-10),
+            ],
+        });
+
+        chatBox.removeChild(thinkingElement);
+        addMessage('ai', completion.content);
+        conversationHistory.push(completion);
+        saveCurrentConversation();
+
+    } catch (error) {
+        console.error("Error calling AI:", error);
+        const thinkingIndicator = chatBox.querySelector('.thinking');
+        if(thinkingIndicator) {
+            chatBox.removeChild(thinkingIndicator);
+        }
+        addMessage('ai', "Sorry, I encountered an error. Please try again.");
+    }
+}
+
+function startNewChat() {
+    saveCurrentConversation();
+
+    currentChatId = null;
+    chatBox.innerHTML = '';
+    conversationHistory = [];
+    userInput.value = '';
+    userInput.style.height = 'auto';
+
+    addMessage('ai', initialGreeting, false);
+    conversationHistory.push({ role: "assistant", content: initialGreeting });
+
+    displayRecentChats();
+    userInput.focus();
+}
+
+function initializeChat() {
+    displayRecentChats();
+
+    const recentChats = getRecentChats();
+    if (recentChats.length > 0) {
+        recentChats.sort((a, b) => b.lastUpdated - a.lastUpdated);
+        loadSpecificChat(recentChats[0].id);
+    } else {
+        startNewChat();
+    }
+}
+
+initializeChat();
+
+sendButton.addEventListener('click', sendMessage);
+
+userInput.addEventListener('keypress', (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
 });
 
-// Enhanced DNA-style particle animation with color cycling
-document.addEventListener('DOMContentLoaded', function() {
-  const canvas = document.querySelector('#particles-js canvas');
-  if (canvas) {
-    let mouseX = 0;
-    let mouseY = 0;
-    let colorIndex = 0;
-    
-    // DNA color palette
-    const dnaColors = [
-      'rgba(16, 185, 129, 0.1)', // emerald
-      'rgba(6, 182, 212, 0.1)',  // cyan
-      'rgba(139, 92, 246, 0.1)', // violet
-      'rgba(245, 158, 11, 0.1)', // amber
-      'rgba(239, 68, 68, 0.1)',  // red
-      'rgba(59, 130, 246, 0.1)'  // blue
-    ];
-    
-    // Animated background color cycling
-    function cycleBackgroundColors() {
-      const particlesContainer = document.getElementById('particles-js');
-      if (particlesContainer) {
-        colorIndex = (colorIndex + 1) % dnaColors.length;
-        particlesContainer.style.background = `
-          radial-gradient(circle at 20% 20%, ${dnaColors[colorIndex]} 0%, transparent 50%),
-          radial-gradient(circle at 80% 80%, ${dnaColors[(colorIndex + 2) % dnaColors.length]} 0%, transparent 50%),
-          radial-gradient(circle at 40% 60%, ${dnaColors[(colorIndex + 4) % dnaColors.length]} 0%, transparent 50%),
-          linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.98) 100%)
-        `;
-      }
-    }
-    
-    // Start color cycling
-    setInterval(cycleBackgroundColors, 3000);
-    cycleBackgroundColors(); // Initial call
-    
-    // Enhanced mouse interaction
-    canvas.addEventListener('mousemove', function(e) {
-      const rect = canvas.getBoundingClientRect();
-      mouseX = e.clientX - rect.left;
-      mouseY = e.clientY - rect.top;
-      
-      // Create DNA helix effect around mouse
-      canvas.style.cursor = 'none';
-      
-      // Add glow effect at mouse position
-      const glowEffect = document.createElement('div');
-      glowEffect.style.position = 'absolute';
-      glowEffect.style.left = (e.clientX - 10) + 'px';
-      glowEffect.style.top = (e.clientY - 10) + 'px';
-      glowEffect.style.width = '20px';
-      glowEffect.style.height = '20px';
-      glowEffect.style.background = 'radial-gradient(circle, rgba(16, 185, 129, 0.8) 0%, transparent 70%)';
-      glowEffect.style.borderRadius = '50%';
-      glowEffect.style.pointerEvents = 'none';
-      glowEffect.style.zIndex = '1000';
-      glowEffect.style.animation = 'pulse 0.5s ease-out forwards';
-      
-      document.body.appendChild(glowEffect);
-      
-      setTimeout(() => {
-        if (glowEffect.parentNode) {
-          glowEffect.parentNode.removeChild(glowEffect);
-        }
-      }, 500);
-    });
-    
-    canvas.addEventListener('mouseleave', function() {
-      canvas.style.cursor = 'default';
-    });
-    
-    // Add pulsing animation styles
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes pulse {
-        0% {
-          transform: scale(0);
-          opacity: 0.8;
-        }
-        100% {
-          transform: scale(3);
-          opacity: 0;
-        }
-      }
-      
-      #particles-js {
-        transition: background 2s ease-in-out;
-      }
-      
-      #particles-js canvas {
-        filter: brightness(1.1) contrast(1.1);
-      }
-    `;
-    document.head.appendChild(style);
-  }
+newChatButton.addEventListener('click', startNewChat);
+
+userInput.addEventListener('input', () => {
+    userInput.style.height = 'auto';
+    userInput.style.height = (userInput.scrollHeight) + 'px';
 });
