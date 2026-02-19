@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Key, ExternalLink, Eye, EyeOff } from 'lucide-react';
 
 interface Props {
   onSave: (key: string) => void;
@@ -18,61 +17,95 @@ export default function ApiKeySetup({ onSave }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-lg p-8">
-        {/* Logo */}
-        <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-            <img
-              src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg"
-              alt="Gemini"
-              className="w-10 h-10"
-              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-          </div>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#f4f4f4',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      fontFamily: 'sans-serif',
+      padding: 16,
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: 420,
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
+        padding: 32,
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <img
+            src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg"
+            alt="Gemini"
+            style={{ width: 48, height: 48, marginBottom: 12 }}
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+          <h2 style={{ margin: 0, color: '#333', fontSize: '1.4em' }}>Chat with Gemini</h2>
+          <p style={{ color: '#666', fontSize: '0.9em', marginTop: 6 }}>
+            Enter your free Google Gemini API key to start chatting
+          </p>
         </div>
 
-        <h1 className="text-2xl font-bold text-foreground text-center mb-1">Chat with Gemini</h1>
-        <p className="text-muted-foreground text-sm text-center mb-6">
-          Enter your free Google Gemini API key to get started
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">
-              Gemini API Key
-            </label>
-            <div className="relative">
-              <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-              <input
-                type={show ? 'text' : 'password'}
-                value={key}
-                onChange={e => { setKey(e.target.value); setError(''); }}
-                placeholder="AIza..."
-                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <button
-                type="button"
-                onClick={() => setShow(s => !s)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
-              >
-                {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {error && <p className="text-destructive text-xs mt-1.5">{error}</p>}
+        <form onSubmit={handleSubmit}>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, color: '#333', fontSize: '0.9em' }}>
+            Gemini API Key
+          </label>
+          <div style={{ display: 'flex', marginBottom: 12 }}>
+            <input
+              type={show ? 'text' : 'password'}
+              value={key}
+              onChange={e => { setKey(e.target.value); setError(''); }}
+              placeholder="AIza..."
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                border: '1px solid #ccc',
+                borderRadius: '8px 0 0 8px',
+                fontSize: '0.95em',
+                outline: 'none',
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setShow(s => !s)}
+              style={{
+                padding: '0 12px',
+                border: '1px solid #ccc',
+                borderLeft: 'none',
+                borderRadius: '0 8px 8px 0',
+                background: '#f9f9f9',
+                cursor: 'pointer',
+                color: '#555',
+                fontSize: '0.85em',
+              }}
+            >
+              {show ? 'Hide' : 'Show'}
+            </button>
           </div>
+          {error && <p style={{ color: '#d32f2f', fontSize: '0.82em', marginBottom: 8 }}>{error}</p>}
 
           <button
             type="submit"
-            className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity"
+            style={{
+              width: '100%',
+              padding: '11px',
+              backgroundColor: '#4285F4',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 600,
+              fontSize: '1em',
+              cursor: 'pointer',
+            }}
           >
             Start Chatting
           </button>
         </form>
 
-        <div className="mt-6 p-4 bg-muted/20 rounded-xl border border-border">
-          <p className="text-xs font-semibold text-foreground mb-2">How to get a free API key:</p>
-          <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+        <div style={{ marginTop: 20, padding: 14, backgroundColor: '#f9f9f9', borderRadius: 8, border: '1px solid #eee' }}>
+          <p style={{ fontWeight: 600, fontSize: '0.85em', color: '#333', marginBottom: 6 }}>How to get a free API key:</p>
+          <ol style={{ paddingLeft: 18, margin: 0, fontSize: '0.82em', color: '#555', lineHeight: 1.7 }}>
             <li>Visit Google AI Studio</li>
             <li>Sign in with your Google account</li>
             <li>Click "Get API Key" → "Create API key"</li>
@@ -82,14 +115,14 @@ export default function ApiKeySetup({ onSave }: Props) {
             href="https://aistudio.google.com/app/apikey"
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
+            style={{ display: 'inline-block', marginTop: 8, color: '#4285F4', fontSize: '0.85em', fontWeight: 600 }}
           >
-            Open Google AI Studio <ExternalLink className="w-3 h-3" />
+            Open Google AI Studio →
           </a>
         </div>
 
-        <p className="text-xs text-muted-foreground text-center mt-4">
-          Your key is stored locally on your device only.
+        <p style={{ textAlign: 'center', fontSize: '0.78em', color: '#999', marginTop: 14 }}>
+          Your key is stored locally on your device only — never sent to any server.
         </p>
       </div>
     </div>

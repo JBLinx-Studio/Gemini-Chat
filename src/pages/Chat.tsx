@@ -30,7 +30,6 @@ export default function ChatPage() {
   const [currentChatId, setCurrentChatId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [scriptSize, setScriptSize] = useState<'auto' | 'small' | 'large'>('auto');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const currentChatIdRef = useRef<number | null>(null);
   const conversationHistoryRef = useRef<Message[]>([]);
 
@@ -191,18 +190,16 @@ Use *italics* and **bold** for emphasis. Keep responses clear and friendly.`;
   }
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
+    <div id="chat-container">
       <ChatSidebar
         recentChats={recentChats}
         currentChatId={currentChatId}
         onNewChat={startNewChat}
         onLoadChat={loadChat}
         onClearApiKey={handleClearApiKey}
-        isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(o => !o)}
       />
-      <div className="flex flex-col flex-1 min-w-0">
-        <ChatMessages messages={messages} isLoading={isLoading} onToggleSidebar={() => setSidebarOpen(o => !o)} />
+      <div id="main-chat">
+        <ChatMessages messages={messages} isLoading={isLoading} />
         <ChatInput
           onSend={sendMessage}
           isLoading={isLoading}
